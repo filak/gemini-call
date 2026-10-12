@@ -1,0 +1,28 @@
+[project]
+name = "gemini-call"
+version = "0.1.0"
+description = "Compact Gemini API wrapper + CLI - prompt + files"
+requires-python = ">=3.12"
+dependencies = [
+    "google-genai>=0.8.0",
+]
+
+
+[dependency-groups]
+dev = [
+    "black>=24.8.0",
+    "flake8>=7.1.0",
+    "pytest>=8.3.0",
+]
+
+
+[project.scripts]
+gemini = "gemini_call.cli:main"
+
+
+[build-system]
+requires = ["uv_build>=0.9.4"]
+build-backend = "uv_build"
+
+
+
