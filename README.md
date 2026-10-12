@@ -32,6 +32,29 @@ Set a Gemini API key as an environment variable: GEMINI_API_KEY
 
 ```bash
 uv run gemini --help
+```
+
+```bash
+usage: gemini [-h] [-f FILES] [-m MODEL] [-s SYSTEM] prompt
+
+Call Gemini API with prompt + files
+
+positional arguments:
+  prompt                Prompt text
+
+options:
+  -h, --help            show this help message and exit
+  -f FILES, --file FILES
+                        File to attach (repeatable): image, txt, json
+  -m MODEL, --model MODEL
+                        Model, default: gemini-3.8-flash
+  -s SYSTEM, --system SYSTEM
+                        System instruction
+```
+
+Examples:
+
+```bash
 uv run gemini "hello"
 uv run gemini "Explain this file" -f README.md
 ```
