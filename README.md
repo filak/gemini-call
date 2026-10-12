@@ -18,6 +18,10 @@ For development, create the project environment instead:
 uv sync
 ```
 
+```bash
+uv sync --upgrade
+```
+
 ## Setup
 
 Set a Gemini API key as an environment variable: GEMINI_API_KEY
