@@ -20,15 +20,17 @@ uv sync
 
 ## Setup
 
-1. Set a Gemini API key as an environment variable.
-2. Run the CLI with a prompt and optional files.
+Set a Gemini API key as an environment variable: GEMINI_API_KEY
+
+```bash
+# CMD: setx /M GEMINI_API_KEY "your-api-key"
+# PowerShell: $env:GEMINI_API_KEY = "your-api-key"
+# POSIX shell: export GEMINI_API_KEY="your-api-key"
+```
 
 ## Commands
 
 ```bash
-uv sync
-# PowerShell: $env:GEMINI_API_KEY = "your-api-key"
-# POSIX shell: export GEMINI_API_KEY="your-api-key"
 uv run gemini --help
 uv run gemini "hello"
 uv run gemini "Explain this file" -f README.md
