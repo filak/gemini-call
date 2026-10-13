@@ -56,9 +56,6 @@ def test_cli_passes_arguments_to_call(monkeypatch, capsys):
     assert capsys.readouterr().out == "result\n"
 
 
-import pytest
-
-
 def test_load_part_unsupported_extension(tmp_path):
     # Test a completely unsupported extension (e.g., .pdf)
     unsupported_file = tmp_path / "document.pdf"
