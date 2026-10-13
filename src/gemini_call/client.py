@@ -24,8 +24,12 @@ def call(
     files: Optional[Sequence[str]] = None,
     model: Optional[str] = None,
     system: Optional[str] = None,
+    include_file_name: bool = False,
 ) -> str:
-    contents = [prompt, *load_parts(list(files or []))]
+    contents = [
+        prompt,
+        *load_parts(list(files or []), include_file_name=include_file_name),
+    ]
     config = None
     if system:
         config = types.GenerateContentConfig(system_instruction=system)

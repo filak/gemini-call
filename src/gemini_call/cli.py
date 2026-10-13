@@ -30,6 +30,13 @@ def main() -> int:
         default=None,
         help="System instruction",
     )
+    parser.add_argument(
+        "-n",
+        "--include-file-name",
+        action="store_true",
+        dest="include_file_name",
+        help="Include original file names with attached contents",
+    )
     args = parser.parse_args()
     try:
         print(
@@ -38,6 +45,7 @@ def main() -> int:
                 files=args.files,
                 model=args.model,
                 system=args.system,
+                include_file_name=args.include_file_name,
             )
         )
     except RuntimeError as exc:

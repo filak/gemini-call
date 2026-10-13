@@ -26,7 +26,20 @@ def test_get_model_uses_default(monkeypatch):
 def test_load_part_reads_text_file(tmp_path):
     file_path = tmp_path / "notes.txt"
     file_path.write_text("hello world\n", encoding="utf-8")
-    assert load_part(str(file_path))["text"].startswith("File notes.txt:")
+
+    # Passing include_file_name=True ensures "File notes.txt:" header is present
+    result = load_part(str(file_path), include_file_name=True)
+
+    # Access the first element since load_part returns a list
+    assert result[0]["text"].startswith("File notes.txt:")
+
+
+def test_load_part_default_omits_filename(tmp_path):
+    file_path = tmp_path / "notes.txt"
+    file_path.write_text("hello world\n", encoding="utf-8")
+
+    result = load_part(str(file_path))
+    assert result[0]["text"] == "hello world\n"
 
 
 def test_load_parts_returns_empty_for_none():
