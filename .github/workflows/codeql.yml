@@ -14,8 +14,22 @@ name: "CodeQL Advanced"
 on:
   push:
     branches: [ "main" ]
+    paths-ignore:
+      - 'AGENTS.md'
+      - 'README.md'
+      - 'docs/**'
+      - 'specs/**'
+      - '.codex/**'
+      - '.vscode/**'    
   pull_request:
     branches: [ "main" ]
+    paths-ignore:
+      - 'AGENTS.md'
+      - 'README.md'
+      - 'docs/**'
+      - 'specs/**'
+      - '.codex/**'
+      - '.vscode/**'    
   schedule:
     - cron: '30 17 * * 3'
 
