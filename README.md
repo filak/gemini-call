@@ -2,6 +2,8 @@
 
 A compact Gemini API wrapper and CLI for sending a prompt and optional files to a Gemini model.
 
+[![CodeQL](https://github.com/filak/gemini-call/actions/workflows/codeql.yml/badge.svg)](https://github.com/filak/gemini-call/security/code-scanning)
+
 ## Install
 
 Use Python 3.12 or later and [uv](https://docs.astral.sh/uv/).
