@@ -2,6 +2,10 @@
 
 A compact Gemini API wrapper and CLI for sending a prompt and optional files to a Gemini model.
 
+This project uses LLM-AI coding tools.
+
+The current project status is: in development
+
 [![CodeQL](https://github.com/filak/gemini-call/actions/workflows/codeql.yml/badge.svg)](https://github.com/filak/gemini-call/security/code-scanning)
 
 ## Install
