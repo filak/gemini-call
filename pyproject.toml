@@ -23,6 +23,3 @@ gemini = "gemini_call.cli:main"
 [build-system]
 requires = ["uv_build>=0.9.4"]
 build-backend = "uv_build"
-
-
-
