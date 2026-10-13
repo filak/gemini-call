@@ -178,4 +178,3 @@ After an implementation change:
 - Do not resolve an open architectural decision without user approval.
 - Do not create commits, tags, releases, deployments, or pushes unless requested.
 - Never discard uncommitted user changes to complete a Git operation.
-
