@@ -3,7 +3,7 @@ import mimetypes
 import pathlib
 from typing import Any, Dict, List
 
-TEXT_SUFFIXES = {".txt", ".md", ".py", ".csv", ".log"}
+TEXT_SUFFIXES = {".txt", ".png", ".jpg")}
 
 
 def load_part(path: str) -> Dict[str, Any]:
