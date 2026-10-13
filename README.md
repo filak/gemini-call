@@ -51,18 +51,20 @@ positional arguments:
 options:
   -h, --help            show this help message and exit
   -f FILES, --file FILES
-                        File to attach (repeatable): image, txt, json
+                        File to attach (repeatable): image (PNG, JPEG, WEBP), json, txt
   -m MODEL, --model MODEL
                         Model, default: gemini-3.8-flash
   -s SYSTEM, --system SYSTEM
                         System instruction
+  -n, --include-file-name
+                        Include original file names with attached contents
 ```
 
 Examples:
 
 ```bash
 uv run gemini "hello"
-uv run gemini "Explain this file" -f README.md
+uv run gemini "Explain this file" -f README.txt
 ```
 
 ## Environment variables
@@ -72,3 +74,19 @@ uv run gemini "Explain this file" -f README.md
 
 The command reads attached text and JSON files as text. It sends other file
 types as inline binary data.
+
+
+## Development
+
+Run the following commands from the repository root.
+Install the locked Python dependencies:
+
+```bash
+uv sync --locked
+```
+
+Testing:
+
+```bash
+uv run pytest
+```

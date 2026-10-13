@@ -54,3 +54,30 @@ def test_cli_passes_arguments_to_call(monkeypatch, capsys):
 
     assert cli.main() == 0
     assert capsys.readouterr().out == "result\n"
+
+
+import pytest
+
+
+def test_load_part_unsupported_extension(tmp_path):
+    # Test a completely unsupported extension (e.g., .pdf)
+    unsupported_file = tmp_path / "document.pdf"
+    unsupported_file.write_text("dummy content", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Unsupported file format '.pdf'"):
+        load_part(str(unsupported_file))
+
+
+def test_load_part_mismatched_extension_png(tmp_path):
+    # A text file saved with a .png extension will be treated as an image
+    # by extension validation, loading as binary inline_data
+    fake_png = tmp_path / "fake_image.png"
+    fake_png.write_text("this is plain text content", encoding="utf-8")
+
+    result = load_part(str(fake_png))
+
+    # Expect inline_data payload because of .png extension
+    assert len(result) == 1
+    assert "inline_data" in result[0]
+    assert result[0]["inline_data"]["mime_type"] == "image/png"
+    assert result[0]["inline_data"]["data"] == b"this is plain text content"

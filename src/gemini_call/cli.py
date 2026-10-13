@@ -16,7 +16,7 @@ def main() -> int:
         action="append",
         dest="files",
         default=[],
-        help="File to attach (repeatable): image, txt, json",
+        help="File to attach (repeatable): image (PNG, JPEG, WEBP), json, txt",
     )
     parser.add_argument(
         "-m",
