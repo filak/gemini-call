@@ -3,7 +3,7 @@ import mimetypes
 import pathlib
 from typing import Any, Dict, List
 
-TEXT_SUFFIXES = {".txt"}
+TEXT_SUFFIXES = {".txt", ".html", ".htm"}
 JSON_SUFFIXES = {".json"}
 IMAGE_SUFFIXES = {".png", ".jpg", ".webp"}
 
@@ -29,17 +29,13 @@ def load_part(path: str, include_file_name: bool = False) -> List[Dict[str, Any]
     # Process text files
     if suffix in TEXT_SUFFIXES:
         text = file_path.read_text(encoding="utf-8", errors="ignore")
-        content = (
-            f"File {file_path.name}:\n{text[:20000]}"
-            if include_file_name
-            else text[:20000]
-        )
+        content = f"File {file_path.name}:\n{text}" if include_file_name else text
         return [{"text": content}]
 
     # Process JSON files
     if suffix in JSON_SUFFIXES:
         payload = json.loads(file_path.read_bytes())
-        json_text = json.dumps(payload, indent=2, ensure_ascii=False)[:20000]
+        json_text = json.dumps(payload, indent=2, ensure_ascii=False)
         content = (
             f"JSON {file_path.name}:\n{json_text}" if include_file_name else json_text
         )

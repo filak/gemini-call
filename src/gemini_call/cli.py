@@ -1,4 +1,5 @@
 import argparse
+import json
 
 from .client import call
 from .config import GEMINI_MODEL_DEF
@@ -37,17 +38,26 @@ def main() -> int:
         dest="include_file_name",
         help="Include original file names with attached contents",
     )
+    parser.add_argument(
+        "--response-format",
+        choices=("text", "json"),
+        default="text",
+        help="Output format (default: text); includes token usage",
+    )
     args = parser.parse_args()
     try:
-        print(
-            call(
-                args.prompt,
-                files=args.files,
-                model=args.model,
-                system=args.system,
-                include_file_name=args.include_file_name,
-            )
+        result = call(
+            args.prompt,
+            files=args.files,
+            model=args.model,
+            system=args.system,
+            include_file_name=args.include_file_name,
+            response_format=args.response_format,
         )
+        if args.response_format == "json":
+            print(json.dumps(result, ensure_ascii=False))
+        else:
+            print(result)
     except RuntimeError as exc:
         parser.exit(1, f"{parser.prog}: error: {exc}\n")
     return 0
