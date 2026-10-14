@@ -45,7 +45,7 @@ uv run gemini --help
 ```
 
 ```bash
-usage: gemini [-h] [-f FILES] [-m MODEL] [-s SYSTEM] prompt
+usage: gemini [-h] [-f FILES] [-m MODEL] [-s SYSTEM] [-n] [--response-format {text,json}] prompt
 
 Call Gemini API with prompt + files
 
@@ -55,13 +55,15 @@ positional arguments:
 options:
   -h, --help            show this help message and exit
   -f FILES, --file FILES
-                        File to attach (repeatable): image (PNG, JPEG, WEBP), json, txt
+                        File to attach (repeatable): html, image (PNG, JPEG, WEBP), json, txt
   -m MODEL, --model MODEL
                         Model, default: gemini-3.8-flash
   -s SYSTEM, --system SYSTEM
                         System instruction
   -n, --include-file-name
                         Include original file names with attached contents
+  --response-format {text,json}
+                        Output format (default: text); includes token usage
 ```
 
 Examples:
