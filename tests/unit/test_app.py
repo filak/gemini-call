@@ -337,3 +337,230 @@ def test_load_json_does_not_truncate(tmp_path, include_file_name):
         prefix, text = text.split("\n", 1)
         assert prefix == "JSON long.json:"
     assert json.loads(text) == payload
+
+
+def write_payload(tmp_path, data=None, raw=None, bom=False):
+    path = tmp_path / "request.json"
+    content = raw if raw is not None else json.dumps(data).encode("utf-8")
+    path.write_bytes((b"\xef\xbb\xbf" if bom else b"") + content)
+    return str(path)
+
+
+@pytest.fixture
+def mocked_cli_call(monkeypatch):
+    mocked_call = Mock(return_value="result")
+    monkeypatch.setattr(cli, "call", mocked_call)
+    return mocked_call
+
+
+def run_cli(monkeypatch, *argv):
+    monkeypatch.setattr("sys.argv", ["gemini", *argv])
+    return cli.main()
+
+
+def run_cli_error(monkeypatch, capsys, *argv):
+    with pytest.raises(SystemExit) as exc:
+        run_cli(monkeypatch, *argv)
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    return exc.value.code, captured.err
+
+
+FULL_PAYLOAD = {
+    "prompt": "Vyčisti přiložené HTML.",
+    "system": "Vrať jen platné HTML. Žluťoučký kůň.",
+    "model": "payload-model",
+    "files": ["input.html", "data/notes.txt"],
+    "include_file_name": True,
+}
+
+
+def test_cli_payload_minimal(tmp_path, monkeypatch, mocked_cli_call):
+    path = write_payload(tmp_path, {"prompt": "hello", "system": "be brief"})
+    assert run_cli(monkeypatch, "--payload", path) == 0
+    mocked_cli_call.assert_called_once_with(
+        "hello",
+        files=[],
+        model=None,
+        system="be brief",
+        include_file_name=False,
+        response_format="text",
+    )
+
+
+@pytest.mark.parametrize("bom", [False, True])
+def test_cli_payload_complete_unicode(tmp_path, monkeypatch, mocked_cli_call, bom):
+    raw = json.dumps(FULL_PAYLOAD, ensure_ascii=False).encode("utf-8")
+    path = write_payload(tmp_path, raw=raw, bom=bom)
+    assert run_cli(monkeypatch, "--payload", path) == 0
+    mocked_cli_call.assert_called_once_with(
+        FULL_PAYLOAD["prompt"],
+        files=FULL_PAYLOAD["files"],
+        model="payload-model",
+        system=FULL_PAYLOAD["system"],
+        include_file_name=True,
+        response_format="text",
+    )
+
+
+@pytest.mark.parametrize(
+    "argv, key, expected",
+    [
+        (["Console prompt"], "prompt", "Console prompt"),
+        (["-s", "Console system"], "system", "Console system"),
+        (["--system", "Console system"], "system", "Console system"),
+        (["-m", "console-model"], "model", "console-model"),
+        (["--model", "console-model"], "model", "console-model"),
+        (["-f", "a.txt"], "files", ["a.txt"]),
+        (["-f", "a.txt", "--file", "b.png"], "files", ["a.txt", "b.png"]),
+        (["--no-include-file-name"], "include_file_name", False),
+    ],
+)
+def test_cli_console_overrides_payload(
+    tmp_path, monkeypatch, mocked_cli_call, argv, key, expected
+):
+    path = write_payload(tmp_path, FULL_PAYLOAD)
+    assert run_cli(monkeypatch, "--payload", path, *argv) == 0
+    args, kwargs = mocked_cli_call.call_args
+    merged = {"prompt": args[0], **kwargs}
+    for name in FULL_PAYLOAD:
+        assert merged[name] == (expected if name == key else FULL_PAYLOAD[name])
+
+
+@pytest.mark.parametrize("flag", ["-n", "--include-file-name"])
+def test_cli_include_file_name_overrides_payload_false(
+    tmp_path, monkeypatch, mocked_cli_call, flag
+):
+    data = {"prompt": "p", "system": "s", "include_file_name": False}
+    path = write_payload(tmp_path, data)
+    assert run_cli(monkeypatch, "--payload", path, flag) == 0
+    assert mocked_cli_call.call_args.kwargs["include_file_name"] is True
+
+
+def test_cli_payload_with_json_response_format(
+    tmp_path, monkeypatch, mocked_cli_call, capsys
+):
+    mocked_cli_call.return_value = {"response": "ok", "usage": {}}
+    path = write_payload(tmp_path, {"prompt": "p", "system": "s"})
+    assert run_cli(monkeypatch, "--payload", path, "--response-format", "json") == 0
+    assert json.loads(capsys.readouterr().out) == {"response": "ok", "usage": {}}
+    assert mocked_cli_call.call_args.kwargs["response_format"] == "json"
+
+
+def test_cli_without_payload_keeps_defaults(monkeypatch, mocked_cli_call):
+    assert run_cli(monkeypatch, "hello") == 0
+    mocked_cli_call.assert_called_once_with(
+        "hello",
+        files=[],
+        model=None,
+        system=None,
+        include_file_name=False,
+        response_format="text",
+    )
+
+
+def test_cli_requires_prompt_without_payload(monkeypatch, capsys, mocked_cli_call):
+    code, err = run_cli_error(monkeypatch, capsys)
+    assert code == 2
+    assert "required: prompt" in err
+    mocked_cli_call.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "data, message",
+    [
+        (["prompt"], "must be a JSON object"),
+        ("prompt", "must be a JSON object"),
+        (None, "must be a JSON object"),
+        ({"system": "s"}, "missing required key 'prompt'"),
+        ({"prompt": "p"}, "missing required key 'system'"),
+        ({"prompt": "", "system": "s"}, "'prompt' must be a non-empty string"),
+        ({"prompt": "  ", "system": "s"}, "'prompt' must be a non-empty string"),
+        ({"prompt": 1, "system": "s"}, "'prompt' must be a non-empty string"),
+        ({"prompt": "p", "system": ""}, "'system' must be a non-empty string"),
+        ({"prompt": "p", "system": ["s"]}, "'system' must be a non-empty string"),
+        ({"prompt": "p", "system": "s", "model": ""}, "'model' must be"),
+        ({"prompt": "p", "system": "s", "model": 5}, "'model' must be"),
+        ({"prompt": "p", "system": "s", "model": None}, "'model' must be"),
+        ({"prompt": "p", "system": "s", "files": "a.txt"}, "'files' must be"),
+        ({"prompt": "p", "system": "s", "files": [""]}, "'files' must be"),
+        ({"prompt": "p", "system": "s", "files": [1]}, "'files' must be"),
+        (
+            {"prompt": "p", "system": "s", "include_file_name": "true"},
+            "'include_file_name' must be true or false",
+        ),
+        (
+            {"prompt": "p", "system": "s", "include_file_name": 1},
+            "'include_file_name' must be true or false",
+        ),
+        (
+            {"prompt": "p", "system": "s", "temperature": 1, "extra": 2},
+            "unknown payload key(s): extra, temperature",
+        ),
+    ],
+)
+def test_cli_invalid_payload_does_not_call_api(
+    tmp_path, monkeypatch, capsys, mocked_cli_call, data, message
+):
+    # Console overrides must not hide an invalid payload.
+    path = write_payload(tmp_path, data)
+    code, err = run_cli_error(
+        monkeypatch, capsys, "--payload", path, "-s", "x", "-m", "x", "-f", "x"
+    )
+    assert code == 2
+    assert message in err
+    mocked_cli_call.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "raw, message",
+    [
+        (b'{"prompt": "p", "system": ', "invalid JSON in payload file"),
+        (b"", "invalid JSON in payload file"),
+        (b'{"prompt": "\xff", "system": "s"}', "is not valid UTF-8"),
+    ],
+)
+def test_cli_unparsable_payload_does_not_call_api(
+    tmp_path, monkeypatch, capsys, mocked_cli_call, raw, message
+):
+    path = write_payload(tmp_path, raw=raw)
+    code, err = run_cli_error(monkeypatch, capsys, "--payload", path)
+    assert code == 2
+    assert message in err
+    mocked_cli_call.assert_not_called()
+
+
+@pytest.mark.parametrize("name", ["missing.json", "."])
+def test_cli_unreadable_payload_does_not_call_api(
+    tmp_path, monkeypatch, capsys, mocked_cli_call, name
+):
+    code, err = run_cli_error(monkeypatch, capsys, "--payload", str(tmp_path / name))
+    assert code == 2
+    assert "cannot read payload file" in err
+    mocked_cli_call.assert_not_called()
+
+
+def test_cli_payload_relative_files_use_cwd(tmp_path, monkeypatch, generate_content):
+    workdir = tmp_path / "work"
+    (workdir / "data").mkdir(parents=True)
+    (workdir / "data" / "input.html").write_text("<p>Článek</p>", encoding="utf-8")
+    payload_dir = tmp_path / "payloads"
+    payload_dir.mkdir()
+    data = {"prompt": "p", "system": "s", "files": ["data/input.html"]}
+    path = write_payload(payload_dir, data)
+    monkeypatch.chdir(workdir)
+    assert run_cli(monkeypatch, "--payload", path) == 0
+    contents = generate_content.call_args.kwargs["contents"]
+    assert contents == ["p", {"text": "<p>Článek</p>"}]
+
+
+def test_cli_missing_attachment_is_clean_error(
+    tmp_path, monkeypatch, capsys, generate_content
+):
+    missing = tmp_path / "missing.html"
+    code, err = run_cli_error(monkeypatch, capsys, "hello", "-f", str(missing))
+    assert code == 1
+    assert err.startswith("gemini: error: ")
+    assert "missing.html" in err
+    assert "Traceback" not in err
+    generate_content.assert_not_called()

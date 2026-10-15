@@ -45,23 +45,29 @@ uv run gemini --help
 ```
 
 ```bash
-usage: gemini [-h] [-f FILES] [-m MODEL] [-s SYSTEM] [-n] [--response-format {text,json}] prompt
+usage: gemini [-h] [-f FILES] [-m MODEL] [-s SYSTEM]
+              [-n | --include-file-name | --no-include-file-name]
+              [--payload PATH] [--response-format {text,json}]
+              [prompt]
 
 Call Gemini API with prompt + files
 
 positional arguments:
-  prompt                Prompt text
+  prompt                Prompt text (optional with --payload)
 
 options:
   -h, --help            show this help message and exit
   -f FILES, --file FILES
-                        File to attach (repeatable): html, image (PNG, JPEG, WEBP), json, txt
+                        File to attach (repeatable): html, image (PNG, JPEG,
+                        WEBP), json, txt
   -m MODEL, --model MODEL
                         Model, default: gemini-3.8-flash
   -s SYSTEM, --system SYSTEM
                         System instruction
-  -n, --include-file-name
+  -n, --include-file-name, --no-include-file-name
                         Include original file names with attached contents
+  --payload PATH        JSON file with request parameters; console arguments
+                        override it
   --response-format {text,json}
                         Output format (default: text); includes token usage
 ```
@@ -71,6 +77,78 @@ Examples:
 ```bash
 uv run gemini "hello"
 uv run gemini "Explain this file" -f README.txt
+```
+
+If you do not use `--payload`, you must give the `prompt` argument.
+
+## Payload file
+
+Use `--payload PATH` to read request parameters from a JSON file.
+
+Example `request.json`:
+
+```json
+{
+  "prompt": "Clean and normalize the attached HTML.",
+  "system": "Return only valid HTML.",
+  "model": "gemini-3.8-flash",
+  "files": ["input.html"],
+  "include_file_name": true
+}
+```
+
+Required fields:
+
+- `prompt`: a non-empty string.
+- `system`: a non-empty string.
+
+Optional fields:
+
+- `model`: a non-empty string.
+- `files`: a list of non-empty path strings.
+- `include_file_name`: a JSON boolean (`true` or `false`).
+
+Encode the payload file as UTF-8. A byte order mark (BOM) is optional.
+The command rejects unknown fields.
+
+The command validates the complete payload before it calls the API.
+If the payload file is missing, unreadable, not valid UTF-8, not valid JSON,
+or contains an invalid value, the command shows an error and stops with exit code 2.
+If an attachment is missing or unreadable, the command shows an error and stops with exit code 1.
+
+### Precedence
+
+The command selects each value in this order:
+
+1. The console argument.
+2. The payload value.
+3. The default value.
+
+A `-f` or `--file` argument replaces the complete payload `files` list.
+The command does not merge the two lists.
+
+`--response-format` is a console option only. Do not put it in the payload file.
+
+### Paths
+
+The command resolves relative attachment paths from the current working directory.
+It does not resolve them from the location of the payload file.
+This is the same behavior as for `--file`.
+
+### Boolean overrides
+
+- Use `-n` or `--include-file-name` to set `include_file_name` to `true`.
+- Use `--no-include-file-name` to set `include_file_name` to `false`.
+
+### Payload examples
+
+```bash
+uv run gemini --payload request.json
+uv run gemini --payload request.json "Summarize the attached HTML."
+uv run gemini --payload request.json -m other-model-name
+uv run gemini --payload request.json -f page1.html -f page2.html
+uv run gemini --payload request.json --no-include-file-name
+uv run gemini --payload request.json --response-format json
 ```
 
 ## Environment variables
