@@ -1,5 +1,6 @@
 import argparse
 import json
+from pathlib import Path
 from typing import Any, Optional
 
 from .client import call
@@ -36,7 +37,6 @@ def main() -> int:
         help="Prompt text (optional with --payload)",
     )
     parser.add_argument(
-        "-f",
         "--file",
         action="append",
         dest="files",
@@ -44,19 +44,16 @@ def main() -> int:
         help="File to attach (repeatable): html, image (PNG, JPEG, WEBP), json, txt",
     )
     parser.add_argument(
-        "-m",
         "--model",
         default=None,
         help=f"Model, default: {GEMINI_MODEL_DEF}",
     )
     parser.add_argument(
-        "-s",
         "--system",
         default=None,
         help="System instruction",
     )
     parser.add_argument(
-        "-n",
         "--include-file-name",
         action=argparse.BooleanOptionalAction,
         dest="include_file_name",
@@ -70,10 +67,17 @@ def main() -> int:
         help="JSON file with request parameters; console arguments override it",
     )
     parser.add_argument(
-        "--response-format",
+        "--response",
         choices=("text", "json"),
+        dest="response_format",
         default="text",
         help="Output format (default: text); includes token usage",
+    )
+    parser.add_argument(
+        "--output",
+        metavar="PATH",
+        default=None,
+        help="Write output to a file instead of standard output",
     )
     args = parser.parse_args()
 
@@ -98,9 +102,13 @@ def main() -> int:
             response_format=args.response_format,
         )
         if args.response_format == "json":
-            print(json.dumps(result, ensure_ascii=False))
+            text = json.dumps(result, ensure_ascii=False)
         else:
-            print(result)
+            text = result
+        if args.output is not None:
+            Path(args.output).write_text(text + "\n", encoding="utf-8")
+        else:
+            print(text)
     except (RuntimeError, OSError, ValueError) as exc:
         parser.exit(1, f"{parser.prog}: error: {_error_message(exc)}\n")
     return 0

@@ -56,7 +56,7 @@ def test_cli_passes_arguments_to_call(monkeypatch, capsys):
     mocked_call = Mock(return_value="Tokens: total_token_count=12\nresult")
     monkeypatch.setattr(cli, "call", mocked_call)
     monkeypatch.setattr(
-        "sys.argv", ["gemini", "hello", "-f", "note.txt", "-m", "model"]
+        "sys.argv", ["gemini", "hello", "--file", "note.txt", "--model", "model"]
     )
 
     assert cli.main() == 0
@@ -204,7 +204,7 @@ def test_cli_json_is_one_document(monkeypatch, capsys):
     }
     mocked_call = Mock(return_value=result)
     monkeypatch.setattr(cli, "call", mocked_call)
-    monkeypatch.setattr("sys.argv", ["gemini", "hello", "--response-format", "json"])
+    monkeypatch.setattr("sys.argv", ["gemini", "hello", "--response", "json"])
     assert cli.main() == 0
     captured = capsys.readouterr()
     assert json.loads(captured.out) == result
@@ -216,7 +216,7 @@ def test_cli_json_is_one_document(monkeypatch, capsys):
 def test_cli_invalid_format_does_not_call_api(monkeypatch, capsys):
     mocked_call = Mock()
     monkeypatch.setattr(cli, "call", mocked_call)
-    monkeypatch.setattr("sys.argv", ["gemini", "hello", "--response-format", "xml"])
+    monkeypatch.setattr("sys.argv", ["gemini", "hello", "--response", "xml"])
     with pytest.raises(SystemExit) as exc:
         cli.main()
     assert exc.value.code == 2
@@ -226,13 +226,47 @@ def test_cli_invalid_format_does_not_call_api(monkeypatch, capsys):
 
 def test_cli_error_stays_on_stderr(monkeypatch, capsys):
     monkeypatch.setattr(cli, "call", Mock(side_effect=RuntimeError("failed")))
-    monkeypatch.setattr("sys.argv", ["gemini", "hello", "--response-format", "json"])
+    monkeypatch.setattr("sys.argv", ["gemini", "hello", "--response", "json"])
     with pytest.raises(SystemExit) as exc:
         cli.main()
     assert exc.value.code == 1
     captured = capsys.readouterr()
     assert captured.out == ""
     assert "failed" in captured.err
+
+
+def test_cli_output_writes_text_file(monkeypatch, capsys, tmp_path):
+    output = tmp_path / "out.txt"
+    monkeypatch.setattr(cli, "call", Mock(return_value="Příliš\nresult"))
+    monkeypatch.setattr("sys.argv", ["gemini", "hello", "--output", str(output)])
+    assert cli.main() == 0
+    assert output.read_text(encoding="utf-8") == "Příliš\nresult\n"
+    assert capsys.readouterr().out == ""
+
+
+def test_cli_output_writes_json_file(monkeypatch, capsys, tmp_path):
+    output = tmp_path / "out.json"
+    result = {"response": "result", "usage": {"total_token_count": 3}}
+    monkeypatch.setattr(cli, "call", Mock(return_value=result))
+    monkeypatch.setattr(
+        "sys.argv",
+        ["gemini", "hello", "--response", "json", "--output", str(output)],
+    )
+    assert cli.main() == 0
+    assert json.loads(output.read_text(encoding="utf-8")) == result
+    assert capsys.readouterr().out == ""
+
+
+def test_cli_output_missing_directory_fails(monkeypatch, capsys, tmp_path):
+    output = tmp_path / "missing" / "out.txt"
+    monkeypatch.setattr(cli, "call", Mock(return_value="result"))
+    monkeypatch.setattr("sys.argv", ["gemini", "hello", "--output", str(output)])
+    with pytest.raises(SystemExit) as exc:
+        cli.main()
+    assert exc.value.code == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "out.txt" in captured.err
 
 
 @pytest.mark.parametrize("response_format", ["text", "json"])
@@ -283,11 +317,11 @@ def test_cli_html_response_round_trip(
         [
             "gemini",
             "Clean HTML",
-            "-f",
+            "--file",
             str(attachment),
             "--system",
             "Return only HTML",
-            "--response-format",
+            "--response",
             response_format,
         ],
     )
@@ -407,12 +441,10 @@ def test_cli_payload_complete_unicode(tmp_path, monkeypatch, mocked_cli_call, bo
     "argv, key, expected",
     [
         (["Console prompt"], "prompt", "Console prompt"),
-        (["-s", "Console system"], "system", "Console system"),
         (["--system", "Console system"], "system", "Console system"),
-        (["-m", "console-model"], "model", "console-model"),
         (["--model", "console-model"], "model", "console-model"),
-        (["-f", "a.txt"], "files", ["a.txt"]),
-        (["-f", "a.txt", "--file", "b.png"], "files", ["a.txt", "b.png"]),
+        (["--file", "a.txt"], "files", ["a.txt"]),
+        (["--file", "a.txt", "--file", "b.png"], "files", ["a.txt", "b.png"]),
         (["--no-include-file-name"], "include_file_name", False),
     ],
 )
@@ -427,13 +459,12 @@ def test_cli_console_overrides_payload(
         assert merged[name] == (expected if name == key else FULL_PAYLOAD[name])
 
 
-@pytest.mark.parametrize("flag", ["-n", "--include-file-name"])
 def test_cli_include_file_name_overrides_payload_false(
-    tmp_path, monkeypatch, mocked_cli_call, flag
+    tmp_path, monkeypatch, mocked_cli_call
 ):
     data = {"prompt": "p", "system": "s", "include_file_name": False}
     path = write_payload(tmp_path, data)
-    assert run_cli(monkeypatch, "--payload", path, flag) == 0
+    assert run_cli(monkeypatch, "--payload", path, "--include-file-name") == 0
     assert mocked_cli_call.call_args.kwargs["include_file_name"] is True
 
 
@@ -442,7 +473,7 @@ def test_cli_payload_with_json_response_format(
 ):
     mocked_cli_call.return_value = {"response": "ok", "usage": {}}
     path = write_payload(tmp_path, {"prompt": "p", "system": "s"})
-    assert run_cli(monkeypatch, "--payload", path, "--response-format", "json") == 0
+    assert run_cli(monkeypatch, "--payload", path, "--response", "json") == 0
     assert json.loads(capsys.readouterr().out) == {"response": "ok", "usage": {}}
     assert mocked_cli_call.call_args.kwargs["response_format"] == "json"
 
@@ -505,7 +536,16 @@ def test_cli_invalid_payload_does_not_call_api(
     # Console overrides must not hide an invalid payload.
     path = write_payload(tmp_path, data)
     code, err = run_cli_error(
-        monkeypatch, capsys, "--payload", path, "-s", "x", "-m", "x", "-f", "x"
+        monkeypatch,
+        capsys,
+        "--payload",
+        path,
+        "--system",
+        "x",
+        "--model",
+        "x",
+        "--file",
+        "x",
     )
     assert code == 2
     assert message in err
@@ -558,7 +598,7 @@ def test_cli_missing_attachment_is_clean_error(
     tmp_path, monkeypatch, capsys, generate_content
 ):
     missing = tmp_path / "missing.html"
-    code, err = run_cli_error(monkeypatch, capsys, "hello", "-f", str(missing))
+    code, err = run_cli_error(monkeypatch, capsys, "hello", "--file", str(missing))
     assert code == 1
     assert err.startswith("gemini: error: ")
     assert "missing.html" in err

@@ -45,9 +45,10 @@ uv run gemini --help
 ```
 
 ```bash
-usage: gemini [-h] [-f FILES] [-m MODEL] [-s SYSTEM]
-              [-n | --include-file-name | --no-include-file-name]
-              [--payload PATH] [--response-format {text,json}]
+usage: gemini [-h] [--file FILES] [--model MODEL] [--system SYSTEM]
+              [--include-file-name | --no-include-file-name]
+              [--payload PATH] [--response {text,json}]
+              [--output PATH]
               [prompt]
 
 Call Gemini API with prompt + files
@@ -57,29 +58,35 @@ positional arguments:
 
 options:
   -h, --help            show this help message and exit
-  -f FILES, --file FILES
-                        File to attach (repeatable): html, image (PNG, JPEG,
-                        WEBP), json, txt
-  -m MODEL, --model MODEL
-                        Model, default: gemini-3.8-flash
-  -s SYSTEM, --system SYSTEM
-                        System instruction
-  -n, --include-file-name, --no-include-file-name
+  --file FILES          File to attach (repeatable): html, image (PNG, JPEG, WEBP), json, txt
+  --model MODEL         Model, default: gemini-3.8-flash
+  --system SYSTEM       System instruction
+  --include-file-name, --no-include-file-name
                         Include original file names with attached contents
-  --payload PATH        JSON file with request parameters; console arguments
-                        override it
-  --response-format {text,json}
+  --payload PATH        JSON file with request parameters; console arguments override it
+  --response {text,json}
                         Output format (default: text); includes token usage
+  --output PATH         Write output to a file instead of standard output
 ```
 
 Examples:
 
 ```bash
 uv run gemini "hello"
-uv run gemini "Explain this file" -f README.txt
+uv run gemini "Explain this file" --file README.txt
+uv run gemini "hello" --output result.txt
 ```
 
 If you do not use `--payload`, you must give the `prompt` argument.
+
+### Output file
+
+If you use `--output PATH`, the command writes the output to the file.
+The command does not write the output to standard output.
+The command writes the file in UTF-8 and replaces an existing file.
+The command resolves a relative path from the current working directory.
+The parent directory must exist.
+If the command cannot write the file, it shows an error and stops with exit code 1.
 
 ## Payload file
 
@@ -124,10 +131,10 @@ The command selects each value in this order:
 2. The payload value.
 3. The default value.
 
-A `-f` or `--file` argument replaces the complete payload `files` list.
+A `--file` argument replaces the complete payload `files` list.
 The command does not merge the two lists.
 
-`--response-format` is a console option only. Do not put it in the payload file.
+`--response` and `--output` are console options only. Do not put them in the payload file.
 
 ### Paths
 
@@ -137,7 +144,7 @@ This is the same behavior as for `--file`.
 
 ### Boolean overrides
 
-- Use `-n` or `--include-file-name` to set `include_file_name` to `true`.
+- Use `--include-file-name` to set `include_file_name` to `true`.
 - Use `--no-include-file-name` to set `include_file_name` to `false`.
 
 ### Payload examples
@@ -145,10 +152,10 @@ This is the same behavior as for `--file`.
 ```bash
 uv run gemini --payload request.json
 uv run gemini --payload request.json "Summarize the attached HTML."
-uv run gemini --payload request.json -m other-model-name
-uv run gemini --payload request.json -f page1.html -f page2.html
+uv run gemini --payload request.json --model other-model-name
+uv run gemini --payload request.json --file page1.html --file page2.html
 uv run gemini --payload request.json --no-include-file-name
-uv run gemini --payload request.json --response-format json
+uv run gemini --payload request.json --response json
 ```
 
 ## Environment variables
